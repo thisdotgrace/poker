@@ -37,8 +37,16 @@ cmp (_, y1) (_, y2) = compare y1 y2
 getRandomInt :: IO Int
 getRandomInt = randomIO
 
-shuffle :: Int -> [Card] -> [Card]
-shuffle n xs = [ x | (x, a) <- sortBy cmp (zip xs ((randoms (mkStdGen n)) :: [Int]))]
+shuffle :: [Card] -> IO [Card]
+shuffle xs = do
+  n <- getRandomInt
+  let shuffled = [ x | (x, a) <- sortBy cmp (zip xs ((randoms (mkStdGen n)) :: [Int]))]
+  return shuffled
 
 main :: IO()
-main = print deck
+main = do
+    putStrLn "Original deck:"
+    print deck
+    putStrLn "\nShuffled deck:"
+    shuffledDeck <- shuffle deck
+    print shuffledDeck

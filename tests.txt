@@ -1,3 +1,18 @@
 
 let player1 = Active {name = "Grace", privateCards = [Card Two Clubs, Card Five Diamonds], chips = 100, isDealer = True}
 let player1 = Inactive
+
+
+main = do
+    putStrLn "Original deck:"
+    print deck
+    putStrLn "\nShuffled deck:"
+    shuffledDeck <- shuffle deck
+    print shuffledDeck
+
+ghci> main    
+Original deck:
+[Two of Hearts,Three of Hearts,Four of Hearts,Five of Hearts,Six of Hearts,Seven of Hearts,Eight of Hearts,Nine of Hearts,Ten of Hearts,Jack of Hearts,Queen of Hearts,King of Hearts,Ace of Hearts,Two of Diamonds,Three of Diamonds,Four of Diamonds,Five of Diamonds,Six of Diamonds,Seven of Diamonds,Eight of Diamonds,Nine of Diamonds,Ten of Diamonds,Jack of Diamonds,Queen of Diamonds,King of Diamonds,Ace of Diamonds,Two of Spades,Three of Spades,Four of Spades,Five of Spades,Six of Spades,Seven of Spades,Eight of Spades,Nine of Spades,Ten of Spades,Jack of Spades,Queen of Spades,King of Spades,Ace of Spades,Two of Clubs,Three of Clubs,Four of Clubs,Five of Clubs,Six of Clubs,Seven of Clubs,Eight of Clubs,Nine of Clubs,Ten of Clubs,Jack of Clubs,Queen of Clubs,King of Clubs,Ace of Clubs]
+
+Shuffled deck:
+[Seven of Hearts,Queen of Hearts,Seven of Clubs,Three of Hearts,Eight of Spades,Two of Clubs,Nine of Hearts,Nine of Spades,Three of Clubs,Six of Diamonds,Ten of Hearts,King of Spades,Six of Spades,Two of Diamonds,Four of Hearts,Five of Spades,Nine of Diamonds,Four of Clubs,Ten of Spades,Four of Spades,Two of Hearts,Five of Clubs,Queen of Clubs,King of Hearts,Jack of Spades,Eight of Hearts,Three of Diamonds,Ace of Diamonds,Seven of Spades,Ace of Spades,Three of Spades,Five of Hearts,King of Diamonds,Ten of Diamonds,Six of Hearts,Ace of Clubs,Six of Clubs,Jack of Clubs,Nine of Clubs,Eight of Diamonds,Ten of Clubs,Four of Diamonds,Five of Diamonds,Queen of Diamonds,Jack of Diamonds,Jack of Hearts,Seven of Diamonds,Ace of Hearts,King of Clubs,Two of Spades,Queen of Spades,Eight of Clubs]
