@@ -1,4 +1,5 @@
-
+import System.Random
+import Data.List
 
 -- Defines sum types for suit and value 
 data Suit = Hearts | Diamonds | Spades | Clubs 
@@ -18,18 +19,26 @@ deck = [ Card value suit | suit <- [Hearts, Diamonds, Spades, Clubs], value <- [
 
 -- Player product (can be inactive if folded out)
 data Player = 
-  Inactive |
-  Active
+  Player
   { name :: String,
     privateCards :: [Card],
     chips :: Int,
-    isDealer :: Bool
+    isDealer :: Bool,
+    isActive :: Bool  -- to track if player is still in round (ie not folded)
     -- Behaviour :: String?
   }
   deriving (Show)
 
+-- Shuffling a list
 
+cmp :: (a, Int) -> (a, Int) -> Ordering
+cmp (_, y1) (_, y2) = compare y1 y2
 
+getRandomInt :: IO Int
+getRandomInt = randomIO
+
+shuffle :: Int -> [Card] -> [Card]
+shuffle n xs = [ x | (x, a) <- sortBy cmp (zip xs ((randoms (mkStdGen n)) :: [Int]))]
 
 main :: IO()
 main = print deck
