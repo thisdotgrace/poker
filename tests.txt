@@ -13,6 +13,56 @@ main = do
 ghci> main    
 Original deck:
 [Two of Hearts,Three of Hearts,Four of Hearts,Five of Hearts,Six of Hearts,Seven of Hearts,Eight of Hearts,Nine of Hearts,Ten of Hearts,Jack of Hearts,Queen of Hearts,King of Hearts,Ace of Hearts,Two of Diamonds,Three of Diamonds,Four of Diamonds,Five of Diamonds,Six of Diamonds,Seven of Diamonds,Eight of Diamonds,Nine of Diamonds,Ten of Diamonds,Jack of Diamonds,Queen of Diamonds,King of Diamonds,Ace of Diamonds,Two of Spades,Three of Spades,Four of Spades,Five of Spades,Six of Spades,Seven of Spades,Eight of Spades,Nine of Spades,Ten of Spades,Jack of Spades,Queen of Spades,King of Spades,Ace of Spades,Two of Clubs,Three of Clubs,Four of Clubs,Five of Clubs,Six of Clubs,Seven of Clubs,Eight of Clubs,Nine of Clubs,Ten of Clubs,Jack of Clubs,Queen of Clubs,King of Clubs,Ace of Clubs]
-
 Shuffled deck:
 [Seven of Hearts,Queen of Hearts,Seven of Clubs,Three of Hearts,Eight of Spades,Two of Clubs,Nine of Hearts,Nine of Spades,Three of Clubs,Six of Diamonds,Ten of Hearts,King of Spades,Six of Spades,Two of Diamonds,Four of Hearts,Five of Spades,Nine of Diamonds,Four of Clubs,Ten of Spades,Four of Spades,Two of Hearts,Five of Clubs,Queen of Clubs,King of Hearts,Jack of Spades,Eight of Hearts,Three of Diamonds,Ace of Diamonds,Seven of Spades,Ace of Spades,Three of Spades,Five of Hearts,King of Diamonds,Ten of Diamonds,Six of Hearts,Ace of Clubs,Six of Clubs,Jack of Clubs,Nine of Clubs,Eight of Diamonds,Ten of Clubs,Four of Diamonds,Five of Diamonds,Queen of Diamonds,Jack of Diamonds,Jack of Hearts,Seven of Diamonds,Ace of Hearts,King of Clubs,Two of Spades,Queen of Spades,Eight of Clubs]
+
+
+
+
+
+
+testDeck :: IO()
+testDeck = do
+    putStrLn "Original deck:"
+    print deck
+    putStrLn "\nShuffled deck:"
+    shuffledDeck <- shuffle deck
+    print shuffledDeck
+
+    let player1 = Player{name = "Grace", privateCards = Nothing, chips = 100, isDealer = True, isActive = True}
+    print player1
+
+    let player1WithCards = dealPrivateCards player1 (take 2 shuffledDeck)
+    print player1WithCards
+
+Shuffled deck:
+[Three of Hearts,Four of Clubs,Jack of Diamonds,Seven of Spades,Jack of Hearts,Ace of Spades,King of Diamonds,Nine of Hearts,Seven of Diamonds,Six of Diamonds,Ten of Diamonds,King of Clubs,Six of Clubs,Four of Diamonds,Five of Clubs,Six of Spades,Ace of Diamonds,Two of Diamonds,Seven of Hearts,Queen of Spades,Four of Spades,Five of Hearts,Three of Clubs,Jack of Clubs,Ace of Clubs,Ten of Clubs,Three of Spades,Five of Diamonds,Queen of Clubs,Three of Diamonds,Ten of Hearts,Seven of Clubs,Two of Spades,Nine of Spades,Six of Hearts,Five of Spades,Eight of Diamonds,King of Hearts,Queen of Hearts,King of Spades,Two of Hearts,Eight of Hearts,Queen of Diamonds,Nine of Clubs,Four of Hearts,Two of Clubs,Ten of Spades,Jack of Spades,Eight of Clubs,Nine of Diamonds,Ace of Hearts,Eight of Spades]
+Player {name = "Grace", privateCards = Nothing, chips = 100, isDealer = True, isActive = True}
+Player {name = "Grace", privateCards = Just [Three of Hearts,Four of Clubs], chips = 100, isDealer = True, isActive = True}
+
+
+
+-- Sample GameState with instantiated data
+exampleGameState :: GameState
+exampleGameState = GameState
+  { players = [Player "Alice" (Just [Card Two Hearts, Card Three Spades]) 1000 True True,
+               Player "Bob" (Just [Card Four Diamonds, Card Ace Clubs]) 1500 False True],
+    currentDeck = deck,
+    stage = "Pre-Flop", -- or another stage like "Flop", "Turn", "River"
+    communityCards = Nothing,  -- No community cards yet
+    pot = Just 500,           -- Example pot amount
+    bets = Just [(Player "Alice" (Just [Card Two Hearts, Card Three Spades]) 1000 True True, 100),
+                 (Player "Bob" (Just [Card Four Diamonds, Card Ace Clubs]) 1500 False True, 200)],
+    dealer = Just "Alice",    -- Alice is the dealer
+    smallBlind = Just "Bob",  -- Bob is the small blind
+    bigBlind = Just "Alice"   -- Alice is the big blind
+  }
+
+
+playersList :: [Player]
+playersList = 
+  [ Player "Alice" (Just [Card Ace Spades, Card King Hearts]) 1000 True True,  -- Dealer with cards
+    Player "Bob" Nothing 500 False True,  -- No cards yet, active
+    Player "Charlie" Nothing 800 False False,  -- Folded, not active
+    Player "David" (Just [Card Ten Diamonds, Card Jack Clubs]) 1200 False True  -- With private cards
+  ]
