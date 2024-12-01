@@ -19,32 +19,28 @@ deck = [ Card value suit | suit <- [Hearts, Diamonds, Spades, Clubs], value <- [
 -- Shuffling a list
 cmp :: (a, Int) -> (a, Int) -> Ordering
 cmp (_, y1) (_, y2) = compare y1 y2
-
---shuffle :: [Card] -> IO [Card]
---shuffle xs = do
---  n <- getRandomInt
---  let shuffled = [ x | (x, a) <- sortBy cmp (zip xs ((randoms (mkStdGen n)) :: [Int]))]
---  return shuffled
-
 shuffle :: RandomGen g => [Card] -> g -> [Card]
 shuffle xs gen = 
   let (n, newGen) = randomR (0, maxBound :: Int) gen -- generate random num
       shuffled = [x | (x,_) <- sortBy cmp (zip xs (randoms newGen :: [Int]))]
   in shuffled
 
--- Player product (can be inactive if folded out)
+data PlayerRole = Dealer | SmallBlind | BigBlind | Regular
+  deriving (Eq, Show)
+
+-- Player product type
 data Player = 
   Player
   { name :: String,
     privateCards :: Maybe [Card],
     chips :: Int,
-    isDealer :: Bool,
+    role :: PlayerRole,
     isActive :: Bool  -- to track if player is still in round (ie not folded)
     -- Behaviour :: String?
   }
   deriving (Show)
 
-
+-- GameState product type
 data GameState = 
   GameState
   { players :: [Player],
@@ -52,62 +48,45 @@ data GameState =
     stage :: String,
     communityCards :: Maybe [Card],     -- nothing intially, just cards when dealt
     pot :: Maybe Int,                   
-    bets :: Maybe [(Player, Int)],
-    dealer :: Maybe String,
-    smallBlind :: Maybe String,
-    bigBlind :: Maybe String
+    bets :: Maybe [(Player, Int)]
   }
   deriving (Show)
 
--- Sample GameState with instantiated data
-exampleGameState :: GameState
-exampleGameState = GameState
-  { players = [Player "Alice" (Just [Card Two Hearts, Card Three Spades]) 1000 True True,
-               Player "Bob" (Just [Card Four Diamonds, Card Ace Clubs]) 1500 False True],
-    currentDeck = deck,
-    stage = "Pre-Flop", -- or another stage like "Flop", "Turn", "River"
-    communityCards = Nothing,  -- No community cards yet
-    pot = Just 500,           -- Example pot amount
-    bets = Just [(Player "Alice" (Just [Card Two Hearts, Card Three Spades]) 1000 True True, 100),
-                 (Player "Bob" (Just [Card Four Diamonds, Card Ace Clubs]) 1500 False True, 200)],
-    dealer = Just "Alice",    -- Alice is the dealer
-    smallBlind = Just "Bob",  -- Bob is the small blind
-    bigBlind = Just "Alice"   -- Alice is the big blind
-  }
-
-  -- initial game state (setup)
-  -- Initialize players separately
-player1 = Player { name = "Alice", privateCards = Nothing, chips = 100, isDealer = False, isActive = True }
-player2 = Player { name = "Bob", privateCards = Nothing, chips = 100, isDealer = False, isActive = True }
-player3 = Player { name = "Charlie", privateCards = Nothing, chips = 100, isDealer = False, isActive = True }
-player4 = Player { name = "David", privateCards = Nothing, chips = 100, isDealer = False, isActive = True }
-
--- Define a list of players
-playersList :: [Player]
-playersList = [player1, player2, player3, player4]
-
--- Function to initialize the GameState
-initializeGameState :: [Player] -> [Card] -> GameState
-initializeGameState players deck = GameState
-  { players = playersList,
-    currentDeck = shuffledDeck,
-    stage = "Pre-Flop",  -- Start with Pre-Flop stage
-    communityCards = Nothing,  -- No community cards initially
-    pot = Nothing,  -- Pot starts as Nothing
-    bets = Nothing,  -- Bets start as Nothing
-    dealer = Nothing,  -- First player is the dealer
-    smallBlind = Nothing,  -- Second player is the small blind
-    bigBlind = Nothing  -- Third player is the big blind
-  }
-  where
-    -- Shuffle the deck
-    shuffledDeck = shuffle deck (mkStdGen 42)
 
 
 
+setupPlayers :: IO [Player]
+setupPlayers = do
+  -- ask for number of players
+  putStrLn "Enter number of players: "
+  numPlayersStr <- getLine
+  let numPlayers = read numPlayersStr :: Int
+
+  -- get player names
+  putStrLn $ "Enter the names of " ++ show numPlayers ++ " players:"
+
+  -- collect names and create players
+  getPlayerNames numPlayers 1 []
+  
+
+-- helper function to recursively get player names
+getPlayerNames :: Int -> Int -> [Player] -> IO [Player]
+getPlayerNames 0 _ players = return players -- base case, when no more players to add
+getPlayerNames remaining count players = do
+  -- ask for next players name
+  putStrLn $ "Enter the name for player " ++ show count ++ ":"
+  playerName <- getLine
+
+  -- create new player and add to list of players
+  let newPlayer = Player {name = playerName, privateCards = Nothing, chips = 100, role = Regular, isActive = True}
+  getPlayerNames (remaining - 1) (count + 1) (players ++ [newPlayer])
+
+
+-- Takes 2 cards off top of the deck and assigns them to a player
 dealPrivateCards :: Player -> [Card] -> Player
 dealPrivateCards player cards = player {privateCards = Just (take 2 cards)}
 
+-- applies this to all players, and returns an updated player list and updated cards (with dealt cards removed)
 dealCardsToAll :: [Player] -> [Card] -> ([Player], [Card])
 dealCardsToAll [] deck = ([], deck)
 dealCardsToAll (x:xs) deck =
@@ -116,117 +95,82 @@ dealCardsToAll (x:xs) deck =
       (updatedPlayers, finalDeck) = dealCardsToAll xs remainingDeck   -- recursively call, all players
   in (updatedPlayer : updatedPlayers, finalDeck)                      -- return updated players and remaining deck of cards
 
--- dealCards :: GameState -> [Player] -> GameState
+-- identify dealer
+-- assign smallblind/bigblind as next two players in sequence after dealer
+-- update the players roles in the game state
+assignDealerAndBlinds :: [Player] -> [Player]
+assignDealerAndBlinds players = 
+  let
+    numPlayers = length players
+    currentDealerIndex = 
+      case findIndex (\ player -> role player == Dealer) players of
+        Just idx -> idx
+        Nothing -> -1
+    -- finds index of current dealer, default to 0 for 1st round
 
--- deal cards
--- with shuffled deck, take 2 cards for each player
--- dealCards state players = 
+    -- calculate indices for new dealer/smallblind/bigblind
+    nextDealerIndex = (currentDealerIndex + 1) `mod` numPlayers
+    smallBlindIndex = (nextDealerIndex + 1) `mod` numPlayers
+    bigBlindIndex = (nextDealerIndex + 2) `mod` numPlayers
 
--- for each player, create a new player with 2 cards from deck, update deck to reflect cards taken off top
--- dealCards
+    -- update player roles
+    updateRole :: Int -> Player -> Player
+    updateRole i player
+      | i == nextDealerIndex = player {role = Dealer }
+      | i == smallBlindIndex = player {role = SmallBlind }
+      | i == bigBlindIndex   = player {role = BigBlind }
+      | otherwise            = player {role = Regular}
+  in
+    zipWith updateRole [0..] players
 
-dealCards :: GameState -> String
-dealCards gameState
-  | stage gameState =="Pre-Flop" = "Need to deal private cards"
-  | otherwise = "Flop?"
+-- when placing a bet, check if player has enough
+-- check if bet satisfies (double, match etc)
+-- placeBet :: Player -> Int -> Int -> GameState
 
-
-testDeck :: IO()
-testDeck = do
-    putStrLn "Original deck:"
-    print deck
-    putStrLn "\nShuffled deck:"
-    let gen = mkStdGen 42
-    let shuffledDeck = shuffle deck gen
-    print shuffledDeck
-
-    let player1 = Player{name = "Grace", privateCards = Nothing, chips = 100, isDealer = True, isActive = True}
-    print player1
-
-    let player1WithCards = dealPrivateCards player1 (take 2 shuffledDeck)
-    print player1WithCards
-
-
-testGameState :: GameState -> IO()
-testGameState gameState = do
-  putStrLn "Game State"
-  print gameState
-
-testDealing :: IO()
-testDealing = do
-  let gen = mkStdGen 42
-  let shuffledDeck = shuffle deck gen
-  let (updatedPlayers, remainingDeck) = dealCardsToAll playersList shuffledDeck
-  putStrLn "Number of Players:"
-  print (length updatedPlayers)
-  putStrLn "Updated Players:"
-  print updatedPlayers
-  putStrLn "Remaining Deck:"
-  print remainingDeck
-  putStrLn "Cards remaining: "
-  print (length remainingDeck)
-
-
-
-testSetupState :: IO()
-testSetupState = do
-  let gameState = initializeGameState playersList deck
-  print gameState
-
-
+-- Displays a given game state
 displayGameState :: GameState -> IO()
 displayGameState gameState = do
   putStrLn "========================"
   putStrLn "Game State:"
   putStrLn "========================"
 
-  -- print Players
+  -- print players
   putStrLn "Players:"
   mapM_ (putStrLn . showPlayer) (players gameState)
     
-  -- print Current Deck
+  -- print current Deck
   putStrLn "\nCurrent Deck:"
   showDeck (currentDeck gameState)
     
-  -- print Stage
+  -- print stage
   putStrLn "\nStage:"
   putStrLn $ stage gameState
     
-  -- print Community Cards
+  -- print community Cards
   putStrLn "\nCommunity Cards:"
   case communityCards gameState of
     Nothing -> putStrLn "None"
     Just cards -> showDeck cards
     
-  -- print Pot
+  -- print pot
   putStrLn "\nPot:"
   case pot gameState of
     Nothing -> putStrLn "None"
     Just amount -> putStrLn $ "Total Pot: " ++ show amount
     
-  -- print Bets
+  -- print bets
   putStrLn "\nBets:"
   case bets gameState of
     Nothing -> putStrLn "No bets placed yet."
     Just betList -> mapM_ showBet betList
     
-  -- print Dealer Info
-  putStrLn "\nDealer:"
-  case dealer gameState of
-    Nothing -> putStrLn "No dealer."
-    Just d -> putStrLn $ "Current dealer: " ++ d
-    
-  -- print Small and Big Blinds
-  putStrLn "\nBlinds:"
-  putStrLn $ "Small Blind: " ++ (maybe "None" id (smallBlind gameState))
-  putStrLn $ "Big Blind: " ++ (maybe "None" id (bigBlind gameState))
-    
-  putStrLn "==============================="
-  putStrLn ""
 
 -- helper function to display a Player
 showPlayer :: Player -> String
-showPlayer p = name p ++ " (Chips: " ++ show (chips p) ++ ") \n (Cards: " ++ show (privateCards p) ++ ")"
+showPlayer p =
+  name p ++ " (Chips: " ++ show (chips p) ++ ") " ++
+  "(Role: " ++ show (role p) ++ ")" ++
+  "\n(Cards: " ++ show (privateCards p) ++ ")"
 
 -- helper function to print the deck of cards
 showDeck :: [Card] -> IO ()
@@ -237,20 +181,66 @@ showDeck cards = putStrLn $ unwords (map show cards)
 showBet :: (Player, Int) -> IO ()
 showBet (player, betAmount) = putStrLn $ name player ++ " bet: " ++ show betAmount
 
+pressEnterToContinue :: IO()
+pressEnterToContinue = do
+  putStrLn "\nPress enter to continue..."
+  _ <- getLine
+  return ()
+
 setupState :: IO()
 setupState = do
-  let gameState = initializeGameState playersList deck
+
+  players <- setupPlayers
+  putStrLn "Players in the game: "
+  mapM_ (putStrLn . showPlayer) players
+
+  pressEnterToContinue
+
+  -- initial game state
+  let shuffledDeck = shuffle deck (mkStdGen 42) -- arbitrary seed
+      gameState = GameState 
+        { players = players,
+          currentDeck = shuffledDeck,
+          stage = "Setup", 
+          communityCards = Nothing,
+          pot = Nothing, 
+          bets = Nothing
+        }
+
   displayGameState gameState
+  pressEnterToContinue
 
+  putStrLn "Dealing cards..."
   let cards = currentDeck gameState
-  let currentPlayers = players gameState
-  putStrLn "Players:"
-  mapM_ (putStrLn . showPlayer) (currentPlayers)
-  let (newPlayers, newCards) = dealCardsToAll currentPlayers cards
+  let (newPlayers, newCards) = dealCardsToAll players cards
 
-  let newGameState = gameState { players = newPlayers, currentDeck = newCards }
+  let updatedGameState = gameState { players = newPlayers, currentDeck = newCards }
 
-  displayGameState newGameState
+  displayGameState updatedGameState
+  pressEnterToContinue
+
+  putStrLn "Assigning roles..."
+  let rolePlayers = assignDealerAndBlinds newPlayers
+  let rolesGameState = updatedGameState { players = rolePlayers }
+
+  displayGameState rolesGameState
+
+  putStr "Assigning roles again"
+  let role2players = assignDealerAndBlinds rolePlayers
+  let roles2gamestate = rolesGameState {players = role2players}
+  
+  displayGameState roles2gamestate
+
+  putStrLn "finished"
+
+  
+
+
+
+-- preflop
+-- place initial bets after being dealt
+-- all players place a bet - this reduces their number of chips, should return an int bet
+-- all of their bets are summed and added to pot
 
 
 main :: IO()
